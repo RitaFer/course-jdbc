@@ -1,24 +1,36 @@
 package application;
 
 import db.DB;
-import db.DBIntegrityException;
+import db.DbException;
 
 import java.sql.*;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 
 public class Program {
     public static void main(String[] args) {
-        Connection conn;
-        PreparedStatement st = null;
+        //As transações devem ser atômicas, consistentes, isoladas e duráveis.
+        Connection conn = null;
+        Statement st;
         try {
             conn = DB.getConnection();
-            st = conn.prepareStatement("DELETE from Department WHERE Id = ?");
-            st.setInt(1, 2);
-            int rowsAffected = st.executeUpdate();
-            System.out.println("Feito! Linhas afetadas --> "+rowsAffected);
+            conn.setAutoCommit(false);
+            st = conn.createStatement();
+            int rowsAffected1 = st.executeUpdate("UPDATE seller SET BaseSalary = 1090.0 WHERE DepartmentId = 1");
+            int x = 1;
+            if(x < 2){
+                throw new SQLException("False Error");
+            }
+            int rowsAffected2 = st.executeUpdate("UPDATE seller SET BaseSalary = 2090.0 WHERE DepartmentId = 2");
+            conn.commit();
+            System.out.println("Rows 1 --> "+rowsAffected1);
+            System.out.println("Rows 2 --> "+rowsAffected2);
         } catch (SQLException e) {
-            throw new DBIntegrityException(e.getMessage());
+            try {
+                conn.rollback();
+                throw new DbException("Transação não concluída. Causada por: "+e.getMessage());
+            } catch (SQLException e1) {
+                throw new DbException("Erro no try-rollback(). Causada por: "+e1.getMessage());
+            }
+
         }
     }
 }
